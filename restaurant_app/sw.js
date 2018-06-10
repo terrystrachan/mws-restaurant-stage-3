@@ -1,4 +1,4 @@
-const CACHE_TITLE = 'mws-restaurant-stage-2';
+const CACHE_TITLE = 'mws-restaurant-stage-3';
 const CACHE_VERSION = 'v1';
 
 const CACHE_NAME = CACHE_TITLE + '-'+ CACHE_VERSION;

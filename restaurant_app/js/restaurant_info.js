@@ -72,6 +72,12 @@ function fillRestaurantHTML(restaurant = window.self.restaurant) {
   const name = document.getElementById('restaurant-name');
   name.innerHTML = restaurant.name;
 
+  const star = document.getElementById('restaurant-star');
+  if (restaurant.is_favorite) {
+    star.className += " favorite";
+  }
+
+
   const address = document.getElementById('restaurant-address');
   address.innerHTML = restaurant.address;
 

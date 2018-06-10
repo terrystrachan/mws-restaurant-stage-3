@@ -1,7 +1,7 @@
 /*global idb */
 /*global L */
 
-const DB_NAME = 'mws-restaurant-stage-2';
+const DB_NAME = 'mws-restaurant-stage-3';
 const KEY_STORE = 'restaurants';
 const DB_VERSION = 1;
 

@@ -491,3 +491,27 @@ nav h1 a {
 		margin: 0 auto;
 	}
 }
+
+
+.favorite-star {
+	font-size: 3em;
+	color:bisque;
+	float: right;
+	cursor: pointer;
+	transform: scale3d(1.0, 1.0, 1.0);
+	-webkit-transform: scale3d(1.0, 1.0, 1.0);
+	-moz-transform: scale3d(1.0, 1.0, 1.0);
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+  }
+ 
+  .favorite-star:hover {
+	color: orange;
+  }
+
+.favorite {
+	color: gold;
+  }

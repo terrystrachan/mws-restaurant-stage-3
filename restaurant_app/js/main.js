@@ -4,8 +4,8 @@
 
 'use strict';
 let restaurants;
-let  neighborhoods;
-let  cuisines;
+let neighborhoods;
+let cuisines;
 var map;
 var markers = [];
 var markersLayer;
@@ -13,8 +13,8 @@ let observer;
 /**
  * Fetch neighborhoods and cuisines as soon as the page is loaded.
  */
-document.addEventListener('DOMContentLoaded',  (event) => {
-  markersLayer = new L.LayerGroup(); 
+document.addEventListener('DOMContentLoaded', (event) => {
+  markersLayer = new L.LayerGroup();
   window.self.map = L.map('map').setView([40.722216, -73.987501], 12);
 
   L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
@@ -222,7 +222,14 @@ function preloadImage(entry) {
  * Create restaurant HTML.
  */
 function createRestaurantHTML(restaurant) {
+  const star = document.createElement('span');
+  star.className = "favorite-star";
+  star.innerHTML = "&#x2605;";
+  if (restaurant.is_favorite) {
+    star.className += " favorite";
+  }
   let li = document.createElement('li');
+
   const imageFilename = DBHelper.imageUrlForRestaurant(restaurant);
   let image = document.createElement('img');
 
@@ -252,6 +259,7 @@ function createRestaurantHTML(restaurant) {
   more.setAttribute('role', 'button');
   more.href = DBHelper.urlForRestaurant(restaurant);
   li.append(more);
+  li.append(star);
 
   return li;
 }
@@ -265,16 +273,16 @@ function addMarkersToMap(restaurants = window.self.restaurants) {
   restaurants.forEach(restaurant => {
     // Add marker to the map
     const marker = DBHelper.mapMarkerForRestaurant(restaurant, window.self.map);
-   
-    marker.bindPopup(marker.options.title);
-        marker.on('mouseover', function (e) {
-            e.target.openPopup();
-        });
-        marker.on('mouseout', function (e) {
-            e.target.closePopup();
-        });
 
-        markersLayer.addLayer(marker);
+    marker.bindPopup(marker.options.title);
+    marker.on('mouseover', function (e) {
+      e.target.openPopup();
+    });
+    marker.on('mouseout', function (e) {
+      e.target.closePopup();
+    });
+
+    markersLayer.addLayer(marker);
     marker.on('click', () => {
       window.location.href = marker.options.url;
     });
