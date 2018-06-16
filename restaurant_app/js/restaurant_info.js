@@ -77,6 +77,18 @@ function fillRestaurantHTML(restaurant = window.self.restaurant) {
     star.className += " favorite";
   }
 
+  star.addEventListener('click', e => {
+    console.log(e);
+    if (restaurant.is_favorite) {
+      e.target.className = "favorite-star";
+    } else {
+      e.target.className = "favorite-star favorite";
+    }
+    restaurant.is_favorite = !restaurant.is_favorite;
+    DBHelper.toggleFavorite(restaurant);
+
+  });
+
 
   const address = document.getElementById('restaurant-address');
   address.innerHTML = restaurant.address;

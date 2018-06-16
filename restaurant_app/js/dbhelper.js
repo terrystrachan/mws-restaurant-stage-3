@@ -3,6 +3,7 @@
 
 const DB_NAME = 'mws-restaurant-stage-3';
 const KEY_STORE = 'restaurants';
+const FAVOURITE_SYNC_STORE = 'restaurants-sync';
 const DB_VERSION = 1;
 
 var dbPromise = idb.open(DB_NAME, DB_VERSION, function (upgradeDb) {
@@ -10,6 +11,13 @@ var dbPromise = idb.open(DB_NAME, DB_VERSION, function (upgradeDb) {
   if (!upgradeDb.objectStoreNames.contains(KEY_STORE)) {
     upgradeDb.createObjectStore(KEY_STORE, { keyPath: 'id' });
   }
+
+  if (!upgradeDb.objectStoreNames.contains(FAVOURITE_SYNC_STORE)) {
+    upgradeDb.createObjectStore(FAVOURITE_SYNC_STORE, { keyPath: 'id' });
+  } else {
+    console.log("sync already created - does it contain data to sync?")
+  }
+
 });
 
 /**
@@ -202,4 +210,67 @@ class DBHelper {
     return marker;
   }
 
+  static toggleFavorite(restaurant) {
+    this.storeFavourite(restaurant);
+    this.postFavourite(restaurant.id, restaurant.is_favorite);
+  }
+
+  static postFavourite(id, isFavourite) {
+    fetch(`${DBHelper.DATABASE_URL}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ "is_favorite": isFavourite }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(response => {
+        return response.json();
+      }
+      ).catch(error => {
+        console.error("Saving favourite failed ", error);
+        dbPromise.then(db => {
+          if (!db) { return; }
+          const tx = db.transaction(FAVOURITE_SYNC_STORE, 'readwrite');
+          const store = tx.objectStore(FAVOURITE_SYNC_STORE);
+          store.put({ "id": id, "is_favorite": isFavourite });
+        });
+      });
+  }
+
+  static storeFavourite(restaurant) {
+    dbPromise.then(db => {
+      if (!db) { return; }
+      const tx = db.transaction(KEY_STORE, 'readwrite');
+      const store = tx.objectStore(KEY_STORE);
+      store.put(restaurant);
+    });
+  }
+
+  static syncFavouriteActions() {
+    console.log("Now you're back online - time to sync")
+    dbPromise.then(function (db) {
+      if (!db) { return; }
+      var tx = db.transaction([FAVOURITE_SYNC_STORE], 'readwrite');
+      var store = tx.objectStore(FAVOURITE_SYNC_STORE);
+      return store.getAll().then(syncList => {
+        if (syncList.length > 0) {
+          syncList.forEach(syncRecord => {
+            console.log("posting", syncRecord);
+            DBHelper.postFavourite(syncRecord.id, syncRecord.is_favorite);
+          });
+          DBHelper.clearSyncStore(FAVOURITE_SYNC_STORE);
+        }
+      });
+    });
+  }
+
+  static clearSyncStore(syncStoreName) {
+    return dbPromise.then(db => {
+      const tx = db
+        .transaction(syncStoreName, 'readwrite')
+        .objectStore(syncStoreName)
+        .clear();
+      return tx.complete;
+    });
+  }
 }

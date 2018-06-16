@@ -34,7 +34,22 @@ document.addEventListener('DOMContentLoaded', (event) => {
   }).catch((error) => {
     console.error(error);
   });
-});
+
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  });
+
+function updateOnlineStatus() {
+  var status = document.getElementById("onlineStatus");
+ 
+  var condition = navigator.onLine ? "online" : "offline";
+
+  status.className = condition;
+  status.innerHTML = condition.toUpperCase();
+  
+  DBHelper.syncFavouriteActions();
+  
+  }
 
 function populateDb() {
 
@@ -225,9 +240,24 @@ function createRestaurantHTML(restaurant) {
   const star = document.createElement('span');
   star.className = "favorite-star";
   star.innerHTML = "&#x2605;";
+  console.log("is fave = ", restaurant.is_favorite);
   if (restaurant.is_favorite) {
+    console.log("restaurant = " + restaurant.name + " ("+ restaurant.id+") " + restaurant.is_favorite);
     star.className += " favorite";
   }
+
+  star.addEventListener('click', e => {
+    console.log(e);
+    if (restaurant.is_favorite) {
+      e.target.className = "favorite-star";
+    } else {
+      e.target.className = "favorite-star favorite";
+    }
+    restaurant.is_favorite = !restaurant.is_favorite;
+    DBHelper.toggleFavorite(restaurant);
+
+  });
+
   let li = document.createElement('li');
 
   const imageFilename = DBHelper.imageUrlForRestaurant(restaurant);

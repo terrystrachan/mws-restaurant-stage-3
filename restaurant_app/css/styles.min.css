@@ -80,6 +80,24 @@ section {
 	display: block;
 }
 
+#onlineStatus {
+	position: fixed;
+	width: 100%;
+	font: bold 1em sans-serif;
+	text-align: center;
+	color: #FFF;
+	padding: 0.5em;
+	z-index: 9999;
+  }
+  
+  .online {
+	display: none;
+  }
+  .offline {
+	  display: inline;
+	background: red;
+  }
+
 #maincontent {
 	background-color: #f3f3f3;
 	min-height: 100%;
