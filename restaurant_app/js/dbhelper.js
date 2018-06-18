@@ -1,15 +1,20 @@
 /*global idb */
 /*global L */
 
+const DB_VERSION = 1;
 const DB_NAME = 'mws-restaurant-stage-3';
 const KEY_STORE = 'restaurants';
 const FAVOURITE_SYNC_STORE = 'restaurants-sync';
-const DB_VERSION = 1;
+const REVIEW_KEY_STORE = 'reviews';
+const REVIEW_SYNC_STORE = 'reviews-sync';
 
 var dbPromise = idb.open(DB_NAME, DB_VERSION, function (upgradeDb) {
   'use strict';
   if (!upgradeDb.objectStoreNames.contains(KEY_STORE)) {
     upgradeDb.createObjectStore(KEY_STORE, { keyPath: 'id' });
+  }
+  if (!upgradeDb.objectStoreNames.contains(REVIEW_KEY_STORE)) {
+    upgradeDb.createObjectStore(REVIEW_KEY_STORE, { keyPath: 'id' });
   }
 
   if (!upgradeDb.objectStoreNames.contains(FAVOURITE_SYNC_STORE)) {
@@ -17,6 +22,13 @@ var dbPromise = idb.open(DB_NAME, DB_VERSION, function (upgradeDb) {
   } else {
     console.log("sync already created - does it contain data to sync?")
   }
+
+  if (!upgradeDb.objectStoreNames.contains(REVIEW_SYNC_STORE)) {
+    upgradeDb.createObjectStore(REVIEW_SYNC_STORE, { keyPath: 'id' });
+  } else {
+    console.log("reviews sync already created - does it contain data to sync?")
+  }
+  
 
 });
 
@@ -32,7 +44,7 @@ class DBHelper {
    */
   static get DATABASE_URL() {
     const port = 1337; // Change this to your server port
-    return `http://localhost:${port}/restaurants`;
+    return `http://localhost:${port}`;
   }
 
   /**
@@ -46,7 +58,7 @@ class DBHelper {
       return store.getAll().then(restaurantList => {
         if (restaurantList.length == 0) {
           //split into functions
-          fetch(DBHelper.DATABASE_URL)
+          fetch(DBHelper.DATABASE_URL+"/restaurants")
             .then(response => {
               return response.json();
             })
@@ -72,6 +84,39 @@ class DBHelper {
     });
   }
 
+  static fetchReviewsByRestaurant( restaurantId, callback) {
+    dbPromise.then(function (db) {
+      if (!db) { return; }
+      var tx = db.transaction([REVIEW_KEY_STORE], 'readonly');
+      var store = tx.objectStore(REVIEW_KEY_STORE);
+      return store.getAll().then(reviewsList => {
+        if (reviewsList.length == 0) {
+          //split into functions
+          fetch(DBHelper.DATABASE_URL +"/reviews/?restaurant_id=" + restaurantId)
+            .then(response => {
+              return response.json();
+            })
+            .then(reviews => {
+
+              const tx = db.transaction(REVIEW_KEY_STORE, 'readwrite');
+              const store = tx.objectStore(REVIEW_KEY_STORE);
+              reviews.forEach(review => {
+                store.put(review);
+              });
+              console.log("from the network - STORED!!!!");
+              callback(null, reviews);
+            })
+            .catch(error => {
+              callback(error, null);
+            });
+        } else {
+          console.log("from the database!!!!");
+          callback(null, reviewsList);
+        }
+      });
+
+    });
+  }
   /**
    * Fetch a restaurant by its ID.
    */
@@ -216,7 +261,7 @@ class DBHelper {
   }
 
   static postFavourite(id, isFavourite) {
-    fetch(`${DBHelper.DATABASE_URL}/${id}`, {
+    fetch(`${DBHelper.DATABASE_URL}/restaurants/${id}`, {
       method: 'PUT',
       body: JSON.stringify({ "is_favorite": isFavourite }),
       headers: {
@@ -246,6 +291,11 @@ class DBHelper {
     });
   }
 
+  static syncOfflineUpdates(){
+    this.syncFavouriteActions();
+    this.syncReviews();
+  }
+
   static syncFavouriteActions() {
     console.log("Now you're back online - time to sync")
     dbPromise.then(function (db) {
@@ -264,6 +314,25 @@ class DBHelper {
     });
   }
 
+  static syncReviews() {
+    console.log("Now you're back online - time to sync")
+    dbPromise.then(function (db) {
+      if (!db) { return; }
+      var tx = db.transaction([REVIEW_SYNC_STORE], 'readwrite');
+      var store = tx.objectStore(REVIEW_SYNC_STORE);
+      return store.getAll().then(syncList => {
+        if (syncList.length > 0) {
+          syncList.forEach(syncRecord => {
+            console.log("posting", syncRecord);
+            DBHelper.postReview(syncRecord);
+          });
+          DBHelper.clearSyncStore(REVIEW_SYNC_STORE);
+        }
+      });
+    });
+  }
+
+
   static clearSyncStore(syncStoreName) {
     return dbPromise.then(db => {
       const tx = db
@@ -273,4 +342,48 @@ class DBHelper {
       return tx.complete;
     });
   }
+
+  static addReview(review) {
+    this.storeReview(review);
+    this.postReview(review);
+  }
+
+  static storeReview(review) {
+    dbPromise.then(db => {
+      if (!db) { return; }
+      const tx = db.transaction(REVIEW_KEY_STORE, 'readwrite');
+      const store = tx.objectStore(REVIEW_KEY_STORE);
+      store.put(review);
+    });
+  }
+
+  
+  static postReview(review) {
+    fetch(DBHelper.DATABASE_URL+"/reviews/", {
+      method: 'POST',
+      body: JSON.stringify(
+        { 
+          "restaurant_id": review.restaurant_id,
+        "name":review.name,
+        "rating": review.rating,
+        "comments": review.comments
+      }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(response => {
+        return response.json();
+      }
+      ).catch(error => {
+        console.error("Saving review failed ", error);
+        dbPromise.then(db => {
+          if (!db) { return; }
+          const tx = db.transaction(REVIEW_SYNC_STORE, 'readwrite');
+          const store = tx.objectStore(REVIEW_SYNC_STORE);
+          store.put({ "id": review.id, "review": review });
+        });
+      });
+  }
+
 }

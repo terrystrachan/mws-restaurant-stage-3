@@ -416,6 +416,151 @@ nav h1 a {
 	color: #666;
 }
 
+.inside 
+.float{
+	position:fixed;
+	width:60px;
+	height:60px;
+	bottom:40px;
+	right:40px;
+	background-color:#0C9;
+	color:#FFF;
+	border-radius:50px;
+	text-align:center;
+	font-size:  2.5em;
+	box-shadow: 2px 2px 3px #999;
+	z-index: 9999;
+}
+
+/* form css - needs work */
+
+.modal {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        opacity: 0;
+        visibility: hidden;
+        transform: scale(1.1);
+		transition: visibility 0s linear 0.25s, opacity 0.25s 0s, transform 0.25s;
+		z-index: 9999;
+    }
+    .modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: white;
+        padding: 1rem 1.5rem;
+        width: 24rem;
+        border-radius: 0.5rem;
+    }
+    .close-button {
+        float: right;
+        width: 1.5rem;
+        line-height: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        border-radius: 0.25rem;
+        background-color: lightgray;
+    }
+    .close-button:hover {
+        background-color: darkgray;
+    }
+    .show-modal {
+        opacity: 1;
+        visibility: visible;
+        transform: scale(1.0);
+        transition: visibility 0s linear 0s, opacity 0.25s 0s, transform 0.25s;
+    }
+	.ratings {
+  unicode-bidi: bidi-override;
+  direction: rtl;
+  text-align: center;
+}
+.ratings > span {
+  display: inline-block;
+  position: relative;
+  width: 1.1em;
+}
+.ratings > *:hover,
+.ratings > *:hover ~ span,
+.ratings:not(:hover) > input:checked ~ span {
+  color: transparent;
+}
+.ratings > *:hover:before,
+.ratings > *:hover ~ span:before,
+.ratings:not(:hover) > input:checked ~ span:before {
+   content: "\2605";
+   position: absolute;
+   left: 0; 
+   color: gold;
+}
+
+.ratings > input {
+   margin-left:-1.1em;
+   margin-right:0;
+   top:3px;
+   width:1.1em;
+   height:1.1em;
+   position:relative;
+   z-index:2;
+   opacity:0;
+}
+
+#review-form-container {
+  padding: 10px 20px;
+}
+
+.review-form-wrapper {
+  display: grid;
+  grid-gap: 20px;
+}
+
+.review-form-wrapper p {
+  margin: 0;
+}
+
+.review-form-wrapper input[type='text'] {
+  height: 28px;
+}
+
+.review-form-wrapper input[type='submit'] {
+  border-radius: 4px;
+  width: 150px;
+  justify-self: center;
+  box-shadow: 2px 2px 8px 2px #cecece;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid tomato;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.review-form-wrapper input[type='submit']:hover {
+  box-shadow: none;
+  background-color: tomato;
+}
+
+.review-form-radio-wrapper {
+  display: flex;
+  justify-content: space-between;
+}
+
+#reviews-container h3,
+#review-form-container h3 {
+  color: #252831;
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: -1px;
+  padding: 0 20px;
+  text-align: center;
+}
+/*
+*/
+
 @media screen and (max-width: 599px) {
 	#restaurants-list li {
 		width: calc(100% - 100px);

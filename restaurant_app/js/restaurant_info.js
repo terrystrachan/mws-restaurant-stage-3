@@ -36,10 +36,37 @@ document.addEventListener('DOMContentLoaded', (event) => {
       marker.on('click', () => {
         window.location.href = marker.options.urll;
       });
+
+
+      document
+        .getElementById('addReview')
+        .addEventListener('click', toggleModal);
     }
+    var closeButton = document.querySelector(".close-button");
+    closeButton.addEventListener("click", toggleModal);
+    window.addEventListener("click", closeModal);
+
+    var saveButton = document.querySelector("#saveReview");
+    saveButton.addEventListener("click", addReview);
+
+    window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
   });
+
 });
 
+
+function updateOnlineStatus() {
+  var status = document.getElementById("onlineStatus");
+ 
+  var condition = navigator.onLine ? "online" : "offline";
+
+  status.className = condition;
+  status.innerHTML = condition.toUpperCase();
+  
+  DBHelper.syncOfflineUpdates();
+  
+  }
 /**
  * Get current restaurant from page URL.
  */
@@ -105,8 +132,23 @@ function fillRestaurantHTML(restaurant = window.self.restaurant) {
   if (restaurant.operating_hours) {
     fillRestaurantHoursHTML();
   }
+  updateRestaurantReviews();
+}
+
+function updateRestaurantReviews() {
   // fill reviews
-  fillReviewsHTML();
+
+  window.self.restaurant.reviews = [];
+  const reviewsContainer = document.getElementById('reviews-list');
+  reviewsContainer.innerHTML = '';
+
+  DBHelper.fetchReviewsByRestaurant(window.self.restaurant.id, (error, reviewsList) => {
+    if (error) { // Got an error!
+      console.error(error);
+    } else {
+      fillReviewsHTML(reviewsList);
+    }
+  });
 }
 
 /**
@@ -136,9 +178,9 @@ function fillRestaurantHoursHTML(operatingHours = window.self.restaurant.operati
  */
 function fillReviewsHTML(reviews = window.self.restaurant.reviews) {
   const container = document.getElementById('reviews-container');
-  const title = document.createElement('h3');
-  title.innerHTML = 'Reviews';
-  container.appendChild(title);
+ // const title = document.createElement('h3');
+ // title.innerHTML = 'Reviews';
+ // container.appendChild(title);
 
   if (!reviews) {
     const noReviews = document.createElement('p');
@@ -165,7 +207,7 @@ function createReviewHTML(review) {
   li.appendChild(name);
 
   const date = document.createElement('p');
-  date.innerHTML = review.date;
+  date.innerHTML = new Date(review.updatedAt).toLocaleString();;
   date.className = 'date';
   li.appendChild(date);
 
@@ -209,4 +251,57 @@ function getParameterByName(name, url) {
     return '';
   }
   return decodeURIComponent(results[2].replace(/\+/g, ' '));
+}
+
+
+
+/**
+ * Submit a new review.
+ */
+function addReview(event) {
+  event.preventDefault();
+  let reviewer = document.getElementById('review-name').value;
+  let reviewText = document.getElementById('review-text').value;
+  if (reviewer == "" || reviewText == "") {
+    alert("All fields must be completed");
+    return false;
+  }
+
+  let rating = parseInt(
+    document.querySelector('input[name="myrating"]:checked').value
+  );
+
+
+  let newReview = {
+    id: Date.now(),
+    restaurant_id: window.self.restaurant.id,
+    name: reviewer,
+    rating: rating,
+    comments: reviewText,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+
+  DBHelper.addReview(newReview);
+  updateRestaurantReviews();
+  clearForm();
+  toggleModal();
+}
+
+function clearForm(){
+   document.getElementById('review-name').value = "";
+   document.getElementById('review-text').value = "";
+   document.querySelector('input[id="rating1"]').checked = true;
+}
+
+function toggleModal() {
+  const modal = document.querySelector(".modal");
+  modal.classList.toggle("show-modal");
+}
+
+function closeModal(event) {
+  if (event.target === document.querySelector(".modal")) {
+    toggleModal();
+  }
+
 }

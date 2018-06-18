@@ -47,7 +47,7 @@ function updateOnlineStatus() {
   status.className = condition;
   status.innerHTML = condition.toUpperCase();
   
-  DBHelper.syncFavouriteActions();
+  DBHelper.syncOfflineUpdates();
   
   }
 
