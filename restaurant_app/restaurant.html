@@ -24,8 +24,7 @@
 </head>
 
 <body class="inside">
-        <div id="onlineStatus"></div>
-
+    <div id="onlineStatus"></div>
     <!-- Beginning header -->
     <header>
         <!-- Beginning nav -->
@@ -74,47 +73,40 @@
         </section>
         <!-- end restaurant -->
 
+        <!-- Beginning modal popup form -->
         <div class="modal">
             <div class="modal-content">
-
                 <span class="close-button">&times;</span>
-
-
                 <!-- Beginning review form -->
                 <section id="review-form-container">
-                    <h3>Leave a review:</h3>
+                    <h4 id="review-header"></h4>
                     <form id="review-form" method="post" action="#">
                         <div class="review-form-wrapper">
-                            <label for="review-name">Name:</label>
-                            <input type="text" id="review-name" aria-label="Name" aria-required="true" required>
-
-                            <label for="review-text">Review:</label>
-                            <textarea type="textarea" id="review-text" aria-label="Review text" rows="4" aria-required="true" required></textarea>
-
+                            <label for="reviewerName">Name:</label>
+                            <input type="text" id="reviewerName" aria-label="Name" aria-required="true" required>
+                            <label for="reviewerComments">Review:</label>
+                            <textarea type="textarea" id="reviewerComments" aria-label="Reviewer Comments" rows="4" aria-required="true" required></textarea>
                             <p>Rating:</p>
                             <div class="ratings">
-                                <input id="rating5" name="myrating" type="radio" value="5" />
+                                <input id="rating5" name="starRating" type="radio" value="5" />
                                 <span>☆</span>
-                                <input id="rating4" name="myrating" type="radio" value="4" />
+                                <input id="rating4" name="starRating" type="radio" value="4" />
                                 <span>☆</span>
-                                <input id="rating3" name="myrating" type="radio" value="3" />
+                                <input id="rating3" name="starRating" type="radio" value="3" />
                                 <span>☆</span>
-                                <input id="rating2" name="myrating" type="radio" value="2" />
+                                <input id="rating2" name="starRating" type="radio" value="2" />
                                 <span>☆</span>
-                                <input id="rating1" name="myrating" type="radio" value="1" checked />
+                                <input id="rating1" name="starRating" type="radio" value="1" checked />
                                 <span>☆</span>
                             </div>
-
-                            <button id="saveReview" class="trigger">Save!</button>
-                            <p id="review-status"></p>
+                            <button id="saveReview">Save!</button>
                         </div>
                     </form>
                 </section>
                 <!-- End review form -->
-
-
             </div>
         </div>
+        <!-- End modal popup form -->
 
     </main>
 

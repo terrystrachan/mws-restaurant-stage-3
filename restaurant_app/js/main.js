@@ -10,10 +10,26 @@ var map;
 var markers = [];
 var markersLayer;
 let observer;
+
 /**
- * Fetch neighborhoods and cuisines as soon as the page is loaded.
+ * Setup Map, connectivity listeners and
+ * fetch neighborhoods and cuisines as soon as the page is loaded.
  */
 document.addEventListener('DOMContentLoaded', (event) => {
+  if (event.error) { // Got an error!
+    console.error(event.error);
+  } else {
+    initMap();
+    updateRestaurants();
+    setupRestaurantFilters();
+    addConnectivityListeners();
+  }
+});
+
+/**
+ * configure leaflet.js map
+ */
+function initMap() {
   markersLayer = new L.LayerGroup();
   window.self.map = L.map('map').setView([40.722216, -73.987501], 12);
 
@@ -24,35 +40,48 @@ document.addEventListener('DOMContentLoaded', (event) => {
     accessToken: 'pk.eyJ1IjoidGVycnlzdHJhY2hhbiIsImEiOiJjamhraGJyamcxZXNzMzhvN21tdWhkbGUxIn0.Ja6aFzeyAoTOJouHiB8OYA'
   }).addTo(window.self.map);
   markersLayer.addTo(map);
-
-
-  updateRestaurants();
   document.getElementById('map-container').style.display = 'block';
+}
+
+/**
+ * Update page and map for current restaurants.
+ */
+function updateRestaurants() {
+  const cSelect = document.getElementById('cuisines-select');
+  const nSelect = document.getElementById('neighborhoods-select');
+
+  const cIndex = cSelect.selectedIndex;
+  const nIndex = nSelect.selectedIndex;
+
+  const cuisine = cSelect[cIndex].value;
+  const neighborhood = nSelect[nIndex].value;
+
+  DBHelper.fetchRestaurantByCuisineAndNeighborhood(cuisine, neighborhood, (error, restaurants) => {
+    if (error) { // Got an error!
+      console.error(error);
+    } else {
+      resetRestaurants(restaurants);
+      fillRestaurantsHTML();
+    }
+  });
+}
+
+/**
+ * setup neighborhoods and cuisines filters
+ */
+function setupRestaurantFilters() {
   populateDb().then(() => {
     fetchNeighborhoods();
     fetchCuisines();
   }).catch((error) => {
     console.error(error);
   });
+}
 
-  window.addEventListener('online', updateOnlineStatus);
-  window.addEventListener('offline', updateOnlineStatus);
-  });
-
-function updateOnlineStatus() {
-  var status = document.getElementById("onlineStatus");
- 
-  var condition = navigator.onLine ? "online" : "offline";
-
-  status.className = condition;
-  status.innerHTML = condition.toUpperCase();
-  
-  DBHelper.syncOfflineUpdates();
-  
-  }
-
+/**
+ * fetch and store restaurants
+ */
 function populateDb() {
-
   return new Promise((resolve, reject) => {
     DBHelper.fetchRestaurants((error, restaurants) => {
       if (error) { // Got an error
@@ -64,6 +93,27 @@ function populateDb() {
     });
   }
   );
+}
+
+/**
+ * Trigger when page goes on / off line
+ */
+function addConnectivityListeners() {
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+}
+
+/**
+ * visual indicator of Offline status
+ * and trigger synchronisation of offline data
+ */
+function updateOnlineStatus() {
+  let status = document.getElementById("onlineStatus");
+  const condition = navigator.onLine ? "online" : "offline";
+  status.className = condition;
+  status.innerHTML = condition.toUpperCase();
+
+  DBHelper.syncOfflineUpdates();
 }
 
 /**
@@ -131,47 +181,6 @@ function fillCuisinesHTML(cuisines = window.self.cuisines) {
   });
 }
 
-// /**
-//  * Initialize Google map, called from HTML.
-//  */
-// window.initMap = () => {
-//   // let loc = {
-//   //   lat: 40.722216,
-//   //   lng: -73.987501
-//   // };
-//   // self.map = new google.maps.Map(document.getElementById('map'), {
-//   //   zoom: 12,
-//   //   center: loc,
-//   //   scrollwheel: false
-//   // });
-
-//   self.map = L.map('map').setView([40.722216, -73.987501], 12);
-//   updateRestaurants();
-//   document.getElementById('map-container').style.display = 'block';
-// }
-
-/**
- * Update page and map for current restaurants.
- */
-function updateRestaurants() {
-  const cSelect = document.getElementById('cuisines-select');
-  const nSelect = document.getElementById('neighborhoods-select');
-
-  const cIndex = cSelect.selectedIndex;
-  const nIndex = nSelect.selectedIndex;
-
-  const cuisine = cSelect[cIndex].value;
-  const neighborhood = nSelect[nIndex].value;
-
-  DBHelper.fetchRestaurantByCuisineAndNeighborhood(cuisine, neighborhood, (error, restaurants) => {
-    if (error) { // Got an error!
-      console.error(error);
-    } else {
-      resetRestaurants(restaurants);
-      fillRestaurantsHTML();
-    }
-  });
-}
 
 /**
  * Clear current restaurants, their HTML and remove their map markers.
@@ -240,14 +249,11 @@ function createRestaurantHTML(restaurant) {
   const star = document.createElement('span');
   star.className = "favorite-star";
   star.innerHTML = "&#x2605;";
-  console.log("is fave = ", restaurant.is_favorite);
   if (restaurant.is_favorite) {
-    console.log("restaurant = " + restaurant.name + " ("+ restaurant.id+") " + restaurant.is_favorite);
     star.className += " favorite";
   }
 
   star.addEventListener('click', e => {
-    console.log(e);
     if (restaurant.is_favorite) {
       e.target.className = "favorite-star";
     } else {

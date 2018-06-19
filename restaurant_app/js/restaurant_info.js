@@ -9,64 +9,100 @@ var map;
  * Initialize Google map, called from HTML.
  */
 document.addEventListener('DOMContentLoaded', (event) => {
+  if (event.error) { // Got an error!
+    console.error(event.error);
+  } else {
+    loadRestaurant();
+    addReviewButtonListener();
+    addReviewModalEvents();
+    addConnectivityListeners();
+  }
+});
+
+/**
+ * load the restaurants and initialise the map
+ */
+function loadRestaurant() {
   fetchRestaurantFromURL((error, restaurant) => {
     if (error) { // Got an error!
       console.error(error);
+      return false;
     } else {
-      window.self.map = L.map('map').setView([40.722216, -73.987501], 12);
-
-      L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
-        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-        maxZoom: 12,
-        id: 'mapbox.streets',
-        accessToken: 'pk.eyJ1IjoidGVycnlzdHJhY2hhbiIsImEiOiJjamhraGJyamcxZXNzMzhvN21tdWhkbGUxIn0.Ja6aFzeyAoTOJouHiB8OYA'
-      }).addTo(window.self.map);
+      initMap();
       fillBreadcrumb();
-      const marker = DBHelper.mapMarkerForRestaurant(window.self.restaurant, window.self.map);
-
-      marker.bindPopup(marker.options.title);
-      marker.on('mouseover', function (e) {
-        e.target.openPopup();
-      });
-      marker.on('mouseout', function (e) {
-        e.target.closePopup();
-      });
-
-      marker.addTo(map);
-      marker.on('click', () => {
-        window.location.href = marker.options.urll;
-      });
-
-
-      document
-        .getElementById('addReview')
-        .addEventListener('click', toggleModal);
+      document.getElementById("review-header").innerHTML = "Please review " + restaurant.name;
     }
-    var closeButton = document.querySelector(".close-button");
-    closeButton.addEventListener("click", toggleModal);
-    window.addEventListener("click", closeModal);
+  });
+}
 
-    var saveButton = document.querySelector("#saveReview");
-    saveButton.addEventListener("click", addReview);
+/**
+ * display the review modal
+ */
+function addReviewButtonListener() {
+  document.getElementById('addReview').addEventListener('click', toggleModal);
+}
+/**
+ * 
+ */
+function initMap() {
+  window.self.map = L.map('map').setView([40.722216, -73.987501], 12);
 
-    window.addEventListener('online', updateOnlineStatus);
-  window.addEventListener('offline', updateOnlineStatus);
+  L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+    maxZoom: 12,
+    id: 'mapbox.streets',
+    accessToken: 'pk.eyJ1IjoidGVycnlzdHJhY2hhbiIsImEiOiJjamhraGJyamcxZXNzMzhvN21tdWhkbGUxIn0.Ja6aFzeyAoTOJouHiB8OYA'
+  }).addTo(window.self.map);
+  const marker = DBHelper.mapMarkerForRestaurant(window.self.restaurant, window.self.map);
+
+  marker.bindPopup(marker.options.title);
+  marker.on('mouseover', function (e) {
+    e.target.openPopup();
+  });
+  marker.on('mouseout', function (e) {
+    e.target.closePopup();
   });
 
-});
+  marker.addTo(map);
+  marker.on('click', () => {
+    window.location.href = marker.options.urll;
+  });
 
+}
 
+/**
+ * add click events to modal 
+ */
+function addReviewModalEvents() {
+  const closeButton = document.querySelector(".close-button");
+  const saveButton = document.querySelector("#saveReview");
+
+  window.addEventListener("click", closeModal);
+  closeButton.addEventListener("click", toggleModal);
+  saveButton.addEventListener("click", addReview);
+}
+
+/**
+ * Trigger when page goes on / off line
+ */
+function addConnectivityListeners() {
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+}
+
+/**
+ * visual indicator of Offline status
+ * and trigger synchronisation of offline data
+ */
 function updateOnlineStatus() {
-  var status = document.getElementById("onlineStatus");
- 
-  var condition = navigator.onLine ? "online" : "offline";
-
+  let status = document.getElementById("onlineStatus");
+  const condition = navigator.onLine ? "online" : "offline";
   status.className = condition;
   status.innerHTML = condition.toUpperCase();
-  
+
   DBHelper.syncOfflineUpdates();
-  
-  }
+}
+
 /**
  * Get current restaurant from page URL.
  */
@@ -115,7 +151,6 @@ function fillRestaurantHTML(restaurant = window.self.restaurant) {
     DBHelper.toggleFavorite(restaurant);
 
   });
-
 
   const address = document.getElementById('restaurant-address');
   address.innerHTML = restaurant.address;
@@ -178,10 +213,6 @@ function fillRestaurantHoursHTML(operatingHours = window.self.restaurant.operati
  */
 function fillReviewsHTML(reviews = window.self.restaurant.reviews) {
   const container = document.getElementById('reviews-container');
- // const title = document.createElement('h3');
- // title.innerHTML = 'Reviews';
- // container.appendChild(title);
-
   if (!reviews) {
     const noReviews = document.createElement('p');
     noReviews.innerHTML = 'No reviews yet!';
@@ -235,7 +266,9 @@ function fillBreadcrumb(restaurant = window.self.restaurant) {
 }
 
 /**
- * Get a parameter by name from page URL.
+ * Get a parameter by name from page URL
+ * @param {*} name 
+ * @param {*} url 
  */
 function getParameterByName(name, url) {
   if (!url) {
@@ -253,55 +286,63 @@ function getParameterByName(name, url) {
   return decodeURIComponent(results[2].replace(/\+/g, ' '));
 }
 
-
-
 /**
- * Submit a new review.
+ * Add a new review
+ * @param {*} event 
  */
 function addReview(event) {
   event.preventDefault();
-  let reviewer = document.getElementById('review-name').value;
-  let reviewText = document.getElementById('review-text').value;
+
+  const reviewer = document.getElementById('reviewerName').value;
+  const reviewText = document.getElementById('reviewerComments').value;
   if (reviewer == "" || reviewText == "") {
     alert("All fields must be completed");
     return false;
   }
 
-  let rating = parseInt(
-    document.querySelector('input[name="myrating"]:checked').value
+  const rating = parseInt(
+    document.querySelector('input[name="starRating"]:checked').value
   );
 
+  DBHelper.addReview(
+    {
+      id: Date.now(), // temporary id
+      restaurant_id: window.self.restaurant.id,
+      name: reviewer,
+      rating: rating,
+      comments: reviewText,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
 
-  let newReview = {
-    id: Date.now(),
-    restaurant_id: window.self.restaurant.id,
-    name: reviewer,
-    rating: rating,
-    comments: reviewText,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  };
-
-  DBHelper.addReview(newReview);
   updateRestaurantReviews();
   clearForm();
   toggleModal();
 }
 
-function clearForm(){
-   document.getElementById('review-name').value = "";
-   document.getElementById('review-text').value = "";
-   document.querySelector('input[id="rating1"]').checked = true;
+/**
+ * Clear the review form fields
+ */
+function clearForm() {
+  document.getElementById('reviewerName').value = "";
+  document.getElementById('reviewerComments').value = "";
+  document.querySelector('input[id="rating1"]').checked = true;
 }
 
+/**
+ * show / hide review popup modal
+ */
 function toggleModal() {
   const modal = document.querySelector(".modal");
   modal.classList.toggle("show-modal");
 }
 
+/**
+ * Close Review popup modal 
+ * @param {*} event 
+ */
 function closeModal(event) {
   if (event.target === document.querySelector(".modal")) {
     toggleModal();
   }
-
 }

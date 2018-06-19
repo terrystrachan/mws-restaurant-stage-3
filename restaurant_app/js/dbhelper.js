@@ -1,41 +1,42 @@
 /*global idb */
 /*global L */
+'use strict';
 
 const DB_VERSION = 1;
 const DB_NAME = 'mws-restaurant-stage-3';
-const KEY_STORE = 'restaurants';
+const RESTAURANT_KEY_STORE = 'restaurants';
 const FAVOURITE_SYNC_STORE = 'restaurants-sync';
 const REVIEW_KEY_STORE = 'reviews';
 const REVIEW_SYNC_STORE = 'reviews-sync';
 
 var dbPromise = idb.open(DB_NAME, DB_VERSION, function (upgradeDb) {
-  'use strict';
-  if (!upgradeDb.objectStoreNames.contains(KEY_STORE)) {
-    upgradeDb.createObjectStore(KEY_STORE, { keyPath: 'id' });
+  if (!upgradeDb.objectStoreNames.contains(RESTAURANT_KEY_STORE)) {
+    upgradeDb.createObjectStore(RESTAURANT_KEY_STORE, { keyPath: 'id' });
   }
   if (!upgradeDb.objectStoreNames.contains(REVIEW_KEY_STORE)) {
     upgradeDb.createObjectStore(REVIEW_KEY_STORE, { keyPath: 'id' });
+
+    let reviewStore = upgradeDb.transaction.objectStore(REVIEW_KEY_STORE);
+    reviewStore.createIndex('restaurant_id', 'restaurant_id');
   }
 
   if (!upgradeDb.objectStoreNames.contains(FAVOURITE_SYNC_STORE)) {
     upgradeDb.createObjectStore(FAVOURITE_SYNC_STORE, { keyPath: 'id' });
   } else {
-    console.log("sync already created - does it contain data to sync?")
+    console.info("sync already created - does it contain data to sync?")
   }
 
   if (!upgradeDb.objectStoreNames.contains(REVIEW_SYNC_STORE)) {
     upgradeDb.createObjectStore(REVIEW_SYNC_STORE, { keyPath: 'id' });
   } else {
-    console.log("reviews sync already created - does it contain data to sync?")
+    console.info("reviews sync already created - does it contain data to sync?")
   }
-  
 
 });
 
 /**
  * Common database helper functions.
  */
-
 class DBHelper {
 
   /**
@@ -53,19 +54,19 @@ class DBHelper {
   static fetchRestaurants(callback) {
     dbPromise.then(function (db) {
       if (!db) { return; }
-      var tx = db.transaction([KEY_STORE], 'readonly');
-      var store = tx.objectStore(KEY_STORE);
+      var tx = db.transaction([RESTAURANT_KEY_STORE], 'readonly');
+      var store = tx.objectStore(RESTAURANT_KEY_STORE);
       return store.getAll().then(restaurantList => {
         if (restaurantList.length == 0) {
           //split into functions
-          fetch(DBHelper.DATABASE_URL+"/restaurants")
+          fetch(DBHelper.DATABASE_URL + "/restaurants")
             .then(response => {
               return response.json();
             })
             .then(restaurants => {
 
-              const tx = db.transaction(KEY_STORE, 'readwrite');
-              const store = tx.objectStore(KEY_STORE);
+              const tx = db.transaction(RESTAURANT_KEY_STORE, 'readwrite');
+              const store = tx.objectStore(RESTAURANT_KEY_STORE);
               restaurants.forEach(restaurant => {
                 store.put(restaurant);
               });
@@ -84,15 +85,16 @@ class DBHelper {
     });
   }
 
-  static fetchReviewsByRestaurant( restaurantId, callback) {
+  static fetchReviewsByRestaurant(restaurantId, callback) {
     dbPromise.then(function (db) {
       if (!db) { return; }
       var tx = db.transaction([REVIEW_KEY_STORE], 'readonly');
       var store = tx.objectStore(REVIEW_KEY_STORE);
-      return store.getAll().then(reviewsList => {
+      var byRestaurant = store.index('restaurant_id');
+      return byRestaurant.getAll(restaurantId).then(reviewsList => {
         if (reviewsList.length == 0) {
           //split into functions
-          fetch(DBHelper.DATABASE_URL +"/reviews/?restaurant_id=" + restaurantId)
+          fetch(DBHelper.DATABASE_URL + "/reviews/?restaurant_id=" + restaurantId)
             .then(response => {
               return response.json();
             })
@@ -255,11 +257,36 @@ class DBHelper {
     return marker;
   }
 
+  /**
+   * update restaurant favourite true / false
+   * @param {*} restaurant 
+   */
   static toggleFavorite(restaurant) {
-    this.storeFavourite(restaurant);
+    this.storeLocalData(RESTAURANT_KEY_STORE, restaurant);
     this.postFavourite(restaurant.id, restaurant.is_favorite);
   }
 
+  /**
+   * 
+   * @param {*} keyStore 
+   * @param {*} data 
+   */
+  static storeLocalData(keyStore, data) {
+    dbPromise.then(db => {
+      if (!db) { return; }
+      const tx = db.transaction(keyStore, 'readwrite');
+      const store = tx.objectStore(keyStore);
+      store.put(data);
+    });
+  }
+
+
+  /**
+   * Put favourite update to backend
+   * Store locally if backend not available
+   * @param {*} id 
+   * @param {*} isFavourite 
+   */
   static postFavourite(id, isFavourite) {
     fetch(`${DBHelper.DATABASE_URL}/restaurants/${id}`, {
       method: 'PUT',
@@ -282,20 +309,20 @@ class DBHelper {
       });
   }
 
-  static storeFavourite(restaurant) {
-    dbPromise.then(db => {
-      if (!db) { return; }
-      const tx = db.transaction(KEY_STORE, 'readwrite');
-      const store = tx.objectStore(KEY_STORE);
-      store.put(restaurant);
-    });
-  }
-
-  static syncOfflineUpdates(){
+  /**
+   * Now you're back online
+   * sync offline favourites and reviews
+   */
+  static syncOfflineUpdates() {
     this.syncFavouriteActions();
     this.syncReviews();
   }
 
+  /**
+   * Now you're back online
+   * Post the favourite updates to the backend
+   * and then clear the sync store
+   */
   static syncFavouriteActions() {
     console.log("Now you're back online - time to sync")
     dbPromise.then(function (db) {
@@ -314,8 +341,12 @@ class DBHelper {
     });
   }
 
+  /**
+   * Now you're back online
+   * Post the reviews to the backend
+   * and then clear the sync store
+   */
   static syncReviews() {
-    console.log("Now you're back online - time to sync")
     dbPromise.then(function (db) {
       if (!db) { return; }
       var tx = db.transaction([REVIEW_SYNC_STORE], 'readwrite');
@@ -332,7 +363,10 @@ class DBHelper {
     });
   }
 
-
+  /**
+   * Clear sync table
+   * @param {*} syncStoreName 
+   */
   static clearSyncStore(syncStoreName) {
     return dbPromise.then(db => {
       const tx = db
@@ -343,31 +377,31 @@ class DBHelper {
     });
   }
 
+  /**
+   * Add a new Review to the database
+   * and post to the backend
+   * @param {*} review 
+   */
   static addReview(review) {
-    this.storeReview(review);
+    this.storeLocalData(REVIEW_KEY_STORE, review);
     this.postReview(review);
   }
 
-  static storeReview(review) {
-    dbPromise.then(db => {
-      if (!db) { return; }
-      const tx = db.transaction(REVIEW_KEY_STORE, 'readwrite');
-      const store = tx.objectStore(REVIEW_KEY_STORE);
-      store.put(review);
-    });
-  }
-
-  
+  /**
+   * Put review to backend
+   * Store locally if backend not available
+   * @param {*} review 
+   */
   static postReview(review) {
-    fetch(DBHelper.DATABASE_URL+"/reviews/", {
+    fetch(DBHelper.DATABASE_URL + "/reviews/", {
       method: 'POST',
       body: JSON.stringify(
-        { 
+        {
           "restaurant_id": review.restaurant_id,
-        "name":review.name,
-        "rating": review.rating,
-        "comments": review.comments
-      }),
+          "name": review.name,
+          "rating": review.rating,
+          "comments": review.comments
+        }),
       headers: {
         'Content-Type': 'application/json'
       }
